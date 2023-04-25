@@ -1,0 +1,8 @@
+{
+  "Nickname": "SilverWeaponKeywords",
+  "Visibility": "Visible",
+  "OneLineDescription": "Adding silver keyword to weapons made with it",
+  "LongDescription": "Adding silver keyword to weapons made with it, optionally able to search by EditorID too",
+  "PreferredAutoVersioning": "Default",
+  "RequiredMods": []
+}
