@@ -9,8 +9,6 @@ using System.Threading.Tasks;
 using Noggog;
 using System.Text.RegularExpressions;
 using Mutagen.Bethesda.Plugins;
-using Mutagen.Bethesda.Oblivion;
-using IWeaponGetter = Mutagen.Bethesda.Skyrim.IWeaponGetter;
 
 namespace SilverWeaponKeywords
 {
@@ -30,6 +28,8 @@ namespace SilverWeaponKeywords
 
         public static void RunPatch(IPatcherState<ISkyrimMod, ISkyrimModGetter> state)
         {
+            // Silver weapons needing the keyword
+            HashSet<FormKey> silverWeapons = new();
 
             // Silver ingots
             HashSet<FormKey> silvers = new()
@@ -40,7 +40,6 @@ namespace SilverWeaponKeywords
             // Treat Quicksilver as Silver
             if (Settings.QuicksilverIsSilver)
                 silvers.Add(Skyrim.MiscItem.IngotQuicksilver.FormKey);
-
 
             // Counters
             int count1 = 0;
@@ -61,6 +60,9 @@ namespace SilverWeaponKeywords
                     continue;
                 }
 
+                // If the weapon is already in the list, ignore it
+                if (silverWeapons.Contains(weapon.FormKey)) continue;
+
                 // For each item needed to craft
                 foreach (var item in recipeGetter.Items)
                 {
@@ -69,22 +71,14 @@ namespace SilverWeaponKeywords
                     {
                         if (Settings.Debug)
                             System.Console.WriteLine("silver weapon found: " + weapon.FormKey);
+
                         if (weapon.Keywords is null) continue;
 
-                        // Add the keyword
+                        // If the weapon does not have the keyword
                         if (!weapon.Keywords.Contains(Skyrim.Keyword.WeapMaterialSilver))
                         {
-                            var weap = state.PatchMod.Weapons.GetOrAddAsOverride(weapon);
-
-                            weap.Keywords?.Add(Skyrim.Keyword.WeapMaterialSilver);
-
-
-                            if (Settings.Debug)
-                                System.Console.WriteLine("Keyword added!");
-
-                            // Count
-                            count1++;
-
+                            // Add the weapon to the list
+                            silverWeapons.Add(weapon.FormKey);
                             continue;
                         }
                         else
@@ -96,15 +90,37 @@ namespace SilverWeaponKeywords
                 }
             }
 
-            System.Console.WriteLine("Added silver keyword to " + count1 + " weapons based on crafting recipes!");
-
-
-            // Search by EditorID
-            if (Settings.SearchByEditorID)
+            // Iterate on all weapons
+            foreach (var weaponGetter in state.LoadOrder.PriorityOrder.WinningOverrides<IWeaponGetter>())
             {
-                // Iterate on Constructible objects (crafting, temper and breakdown)
-                foreach (var weaponGetter in state.LoadOrder.PriorityOrder.WinningOverrides<IWeaponGetter>())
+                // If it is in the list of craftable silver weapons without the keyword, add it
+                if (silverWeapons.Contains(weaponGetter.FormKey))
                 {
+                    // Add the keyword
+                    if (weaponGetter.Keywords is not null && !weaponGetter.Keywords.Contains(Skyrim.Keyword.WeapMaterialSilver))
+                    {
+                        var weap = state.PatchMod.Weapons.GetOrAddAsOverride(weaponGetter);
+                        weap.Keywords?.Add(Skyrim.Keyword.WeapMaterialSilver);
+
+                        if (Settings.Debug)
+                            System.Console.WriteLine("Keyword added to: " + weaponGetter.EditorID + " / " + weaponGetter.FormKey);
+
+                        // Count
+                        count1++;
+
+                        continue;
+                    }
+                    else
+                    {
+                        if (Settings.Debug)
+                            System.Console.WriteLine("Keyword already there, skipping!");
+                    }
+                }
+
+                // Search by EditorID
+                if (Settings.SearchByEditorID)
+                {
+                    
                     // Ignore null EditorID
                     if (weaponGetter.EditorID is null) continue;
 
@@ -136,9 +152,11 @@ namespace SilverWeaponKeywords
                         }
                     }
                 }
-
-                System.Console.WriteLine("Added silver keyword to " + count2 + " weapons by name!");
             }
+
+            System.Console.WriteLine("Added silver keyword to " + count1 + " weapons based on crafting recipes!");
+            System.Console.WriteLine("Added silver keyword to " + count2 + " weapons by name!");
+
             System.Console.WriteLine("All done!");
         }
     }
