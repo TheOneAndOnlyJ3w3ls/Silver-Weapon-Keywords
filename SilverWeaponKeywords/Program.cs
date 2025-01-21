@@ -7,7 +7,6 @@ using Mutagen.Bethesda.Skyrim;
 using Mutagen.Bethesda.FormKeys.SkyrimSE;
 using System.Threading.Tasks;
 using Noggog;
-using System.Text.RegularExpressions;
 using Mutagen.Bethesda.Plugins;
 
 namespace SilverWeaponKeywords
@@ -47,14 +46,17 @@ namespace SilverWeaponKeywords
 
             System.Console.WriteLine("Starting Patching!");
 
+            var linkCacheConnectedToLoadOrder = state.LoadOrder.ToImmutableLinkCache();
+
             // Iterate on Constructible objects (crafting, temper and breakdown)
+            System.Console.WriteLine("Searching cnstructible objects for items made with silver...");
             foreach (var recipeGetter in state.LoadOrder.PriorityOrder.WinningOverrides<IConstructibleObjectGetter>())
             {
                 // Ignore null
                 if (recipeGetter.Items is null) continue;
 
                 // Ignore items that are not weapons
-                var weapon = recipeGetter.CreatedObject.TryResolve<IWeaponGetter>(state.LinkCache);
+                var weapon = recipeGetter.CreatedObject.TryResolve<IWeaponGetter>(linkCacheConnectedToLoadOrder);
                 if (weapon is null)
                 {
                     continue;
@@ -91,6 +93,7 @@ namespace SilverWeaponKeywords
             }
 
             // Iterate on all weapons
+            System.Console.WriteLine("Searching weapons...");
             foreach (var weaponGetter in state.LoadOrder.PriorityOrder.WinningOverrides<IWeaponGetter>())
             {
                 // If it is in the list of craftable silver weapons without the keyword, add it
@@ -120,7 +123,6 @@ namespace SilverWeaponKeywords
                 // Search by EditorID
                 if (Settings.SearchByEditorID)
                 {
-                    
                     // Ignore null EditorID
                     if (weaponGetter.EditorID is null) continue;
 
